@@ -5,7 +5,7 @@ import {NftContract} from "./NftContract.sol";
 import {PresaleContract} from "./PresaleContract.sol";
 import {MintContract} from "./MintContract.sol";
 
-abstract contract ContrtactFactory {
+abstract contract AbsContrtactFactory {
     function deploy(
         string memory _name,
         string memory _symbol,
@@ -13,6 +13,12 @@ abstract contract ContrtactFactory {
         string memory _initNotRevealUri,
         address _initialOwner
     ) public virtual returns (address);
+}
+
+abstract contract AbsNftContract {
+    function MINTER_ROLE() public virtual returns (bytes32);
+
+    function grantRole(bytes32 role, address account) public virtual {}
 }
 
 contract WenftLaunchpadFactory {
@@ -49,7 +55,7 @@ contract WenftLaunchpadFactory {
     ) public returns (address) {
         require(_initialOwner != address(0), "invalid initial owner");
 
-        ContrtactFactory factory = ContrtactFactory(address(0));
+        AbsContrtactFactory factory = AbsContrtactFactory(address(0));
         address addr = factory.deploy(
             _name,
             _symbol,
@@ -70,6 +76,10 @@ contract WenftLaunchpadFactory {
             address(0)
         );
         MintContract mint = new MintContract(_initialOwner, addr, address(0));
+
+        NftContract nftContract = NftContract(addr);
+        nftContract.grantRole(nftContract.MINTER_ROLE(), address(presale));
+        nftContract.grantRole(nftContract.MINTER_ROLE(), address(mint));
 
         WenftLaunchpadSets[address(0)] = LaunchpadSet(
             address(presale),

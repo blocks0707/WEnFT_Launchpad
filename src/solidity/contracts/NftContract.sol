@@ -7,16 +7,21 @@ import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract OwnableDelegateProxy {}
+abstract contract OwnableDelegateProxy {}
 
 /**
  * Used to delegate ownership of a contract to another address, to save on unneeded transactions to approve contract use for users
  */
-contract ProxyRegistry {
+abstract contract ProxyRegistry {
     mapping(address => OwnableDelegateProxy) public proxies;
 }
 
-contract NftContract is ERC721Burnable, ERC721Enumerable, AccessControl {
+contract NftContract is
+    ERC721,
+    ERC721Burnable,
+    ERC721Enumerable,
+    AccessControl
+{
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     bool private _isRevealed = true;
@@ -76,21 +81,6 @@ contract NftContract is ERC721Burnable, ERC721Enumerable, AccessControl {
         uint256 tokenId
     ) public onlyRole(MINTER_ROLE) {
         _safeMint(to, tokenId);
-    }
-
-    function _update(
-        address to,
-        uint256 tokenId,
-        address auth
-    ) internal override(ERC721, ERC721Enumerable) returns (address) {
-        return super._update(to, tokenId, auth);
-    }
-
-    function _increaseBalance(
-        address account,
-        uint128 value
-    ) internal override(ERC721, ERC721Enumerable) {
-        super._increaseBalance(account, value);
     }
 
     function tokenURI(
@@ -252,6 +242,32 @@ contract NftContract is ERC721Burnable, ERC721Enumerable, AccessControl {
         _owner = newOwner;
         emit OwnershipTransferred(oldOwner, newOwner);
     }
+
+    // The following functions are overrides required by Solidity.
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 batchSize
+    ) internal override(ERC721, ERC721Enumerable) {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    }
+
+    // function _update(
+    //     address to,
+    //     uint256 tokenId,
+    //     address auth
+    // ) internal override(ERC721, ERC721Enumerable) returns (address) {
+    //     return super._update(to, tokenId, auth);
+    // }
+
+    // function _increaseBalance(
+    //     address account,
+    //     uint128 value
+    // ) internal override(ERC721, ERC721Enumerable) {
+    //     super._increaseBalance(account, value);
+    // }
 
     function supportsInterface(
         bytes4 interfaceId

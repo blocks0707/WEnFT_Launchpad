@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
@@ -35,7 +35,8 @@ contract MintContract is Pausable, Ownable {
         address _initialOwner,
         address _nftContract,
         address _membershipContract
-    ) Ownable(_initialOwner) {
+    ) {
+        _transferOwnership(_initialOwner);
         nftContractAddress = _nftContract;
         nftContract = NftContract(_nftContract);
         if (_membershipContract != address(0)) {

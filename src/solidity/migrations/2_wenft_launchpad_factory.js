@@ -1,6 +1,6 @@
 const WEnFTLaunchpadFactory = artifacts.require("WenftLaunchpadFactory");
-module.exports = function (_deployer, network, accounts) {
+module.exports = async function (_deployer, network, accounts) {
   console.log(`==> to ${network}`);
   // Use deployer to state migration tasks.
-  _deployer.deploy(WEnFTLaunchpadFactory);
+  await _deployer.deploy(WEnFTLaunchpadFactory);
 };

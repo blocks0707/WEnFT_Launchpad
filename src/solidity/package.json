@@ -6,9 +6,10 @@
     "build": "npm run compile",
     "compile": "npx truffle compile",
     "deploy": "npx truffle migrate",
+    "deploy-test": "npx truffle migrate --dry-run",
     "size": "npx truffle run contract-size",
     "test": "npx truffle test",
-    "test-no-deploy": "npx truffle test --migrate-none"
+    "test-wo-deploy": "npx truffle test --migrate-none"
   },
   "author": "",
   "license": "ISC",
@@ -20,6 +21,6 @@
     "truffle-contract-size": "^2.0.1"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.0"
+    "@openzeppelin/contracts": "^4.0.0"
   }
 }
