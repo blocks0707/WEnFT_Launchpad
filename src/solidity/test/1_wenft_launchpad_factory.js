@@ -9,27 +9,60 @@ contract("WenftLaunchpadFactory", function (accounts) {
   let factory;
   let logs;
 
+  const NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
+
   it("should assert true", async function () {
     factory = await WenftLaunchpadFactory.deployed();
     return assert.isTrue(true);
   });
 
-  it("generate launchpad set", async function () {
-    const receipt = await factory.generateLaunchpadSet(
+  it("generate launchpad set #1", async function () {
+    const result = await factory.generateLaunchpadSet(
       "TESTNFT",
       "TNFT",
       "https://nftcontents.wenft.space/ASDF2/",
-      "https://nftcontents.wenft.space/JJD/",
-      accounts[1]
+      true,
+      accounts[1],
+      NULL_ADDRESS
     );
-    logs = receipt.logs;
-    return assert.isTrue(true);
+    logs = result.receipt.logs;
+    assert.isTrue(result.receipt.status);
+    assert.isTrue(logs[0].args[0] !== NULL_ADDRESS);
+    return;
   });
 
-  it("get launchpad set", async function () {
+  it("get launchpad set #1", async function () {
     console.log(logs);
     const set = await factory.getLaunchpadSet(logs[0].args[0]);
     console.log("set:", set);
-    return assert.isTrue(true);
+    assert.isTrue(set[0] !== NULL_ADDRESS);
+    assert.isTrue(set[1] !== NULL_ADDRESS);
+    assert.isTrue(set[2] !== NULL_ADDRESS);
+    return;
+  });
+
+  it("generate launchpad set #2", async function () {
+    const result = await factory.generateLaunchpadSet(
+      "TESTNFT",
+      "TNFT",
+      "https://nftcontents.wenft.space/ASDF2/",
+      true,
+      accounts[1],
+      NULL_ADDRESS
+    );
+    logs = result.receipt.logs;
+    assert.isTrue(result.receipt.status);
+    assert.isTrue(logs[0].args[0] !== NULL_ADDRESS);
+    return;
+  });
+
+  it("get launchpad set #2", async function () {
+    console.log(logs);
+    const set = await factory.getLaunchpadSet(logs[0].args[0]);
+    console.log("set:", set);
+    assert.isTrue(set[0] !== NULL_ADDRESS);
+    assert.isTrue(set[1] !== NULL_ADDRESS);
+    assert.isTrue(set[2] !== NULL_ADDRESS);
+    return;
   });
 });

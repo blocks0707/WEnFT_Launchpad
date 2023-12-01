@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {NftContract} from "./NftContract.sol";
+import {NftContractFactory} from "./NftContractFactory.sol";
 import {PresaleContract} from "./PresaleContract.sol";
 import {MintContract} from "./MintContract.sol";
 
@@ -10,7 +11,7 @@ abstract contract AbsContrtactFactory {
         string memory _name,
         string memory _symbol,
         string memory _initBaseURI,
-        string memory _initNotRevealUri,
+        bool _initReveal,
         address _initialOwner
     ) public virtual returns (address);
 }
@@ -50,45 +51,45 @@ contract WenftLaunchpadFactory {
         string memory _name,
         string memory _symbol,
         string memory _initBaseURI,
-        string memory _initNotRevealUri,
-        address _initialOwner
+        bool _initReveal,
+        address _initialOwner,
+        address membership
     ) public returns (address) {
         require(_initialOwner != address(0), "invalid initial owner");
 
-        AbsContrtactFactory factory = AbsContrtactFactory(address(0));
+        AbsContrtactFactory factory = AbsContrtactFactory(_factory);
         address addr = factory.deploy(
             _name,
             _symbol,
             _initBaseURI,
-            _initNotRevealUri,
-            _initialOwner
+            _initReveal,
+            address(this)
         );
-        // NftContract nft = new NftContract(
-        //     _initialOwner,
-        //     _name,
-        //     _symbol,
-        //     _initBaseURI,
-        //     _initNotRevealUri
-        // );
+
         PresaleContract presale = new PresaleContract(
             _initialOwner,
             addr,
-            address(0)
+            address(membership)
         );
-        MintContract mint = new MintContract(_initialOwner, addr, address(0));
+        MintContract mint = new MintContract(
+            _initialOwner,
+            addr,
+            address(membership)
+        );
 
         NftContract nftContract = NftContract(addr);
         nftContract.grantRole(nftContract.MINTER_ROLE(), address(presale));
         nftContract.grantRole(nftContract.MINTER_ROLE(), address(mint));
+        nftContract.transferOwnership(_initialOwner);
 
-        WenftLaunchpadSets[address(0)] = LaunchpadSet(
+        WenftLaunchpadSets[addr] = LaunchpadSet(
             address(presale),
             address(mint)
         );
 
         emit LaunchpadSetGenerated(addr, address(presale), address(mint));
 
-        return (address(0));
+        return (addr);
     }
 
     function getLaunchpadSet(

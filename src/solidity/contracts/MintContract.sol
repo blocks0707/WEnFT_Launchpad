@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {NftContract} from "./NftContract.sol";
@@ -26,7 +25,6 @@ contract MintContract is Pausable, Ownable {
         uint256 mintedCount;
         uint256 minTokenId;
         uint256 maxTokenId;
-        bytes32 merkleRoot;
     }
 
     mapping(uint256 => TokenConfig) public tokenConfigs; // 토큰 타입별 정보 매핑
@@ -57,8 +55,7 @@ contract MintContract is Pausable, Ownable {
         uint256 _price,
         uint256 _maxSupply,
         uint256 _minTokenId,
-        uint256 _maxTokenId,
-        bytes32 _merkleRoot
+        uint256 _maxTokenId
     ) external onlyOwner {
         require(_price > 0, "Price must be greater than zero");
         require(_maxSupply > 0, "Max supply must be greater than zero");
@@ -69,8 +66,7 @@ contract MintContract is Pausable, Ownable {
             _maxSupply,
             0,
             _minTokenId,
-            _maxTokenId,
-            _merkleRoot
+            _maxTokenId
         );
     }
 
@@ -121,7 +117,7 @@ contract MintContract is Pausable, Ownable {
         _unpause();
     }
 
-    // NFT 민팅
+    // NFT PUBLIC 민팅
     function mintTo(
         uint256 _tokenType,
         address to,

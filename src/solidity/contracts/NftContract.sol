@@ -7,15 +7,6 @@ import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-abstract contract OwnableDelegateProxy {}
-
-/**
- * Used to delegate ownership of a contract to another address, to save on unneeded transactions to approve contract use for users
- */
-abstract contract ProxyRegistry {
-    mapping(address => OwnableDelegateProxy) public proxies;
-}
-
 contract NftContract is
     ERC721,
     ERC721Burnable,
@@ -24,32 +15,29 @@ contract NftContract is
 {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    bool private _isRevealed = true;
-    bool private _allowExternalTrade = true;
-    string private _preRevealURI;
-    string private _postRevealBaseURI;
+    bool private _isRevealed;
+    string private _URI;
     address private _owner;
-
     string public baseExtension = ".json";
-    address public proxyRegistryAddress;
 
     constructor(
         address _initialOwner,
         string memory _name,
         string memory _symbol,
         string memory _initBaseURI,
-        string memory _initNotRevealUri
+        bool _initReveal
     ) ERC721(_name, _symbol) {
         require(_initialOwner != address(0), "inavalid initial owner");
 
         _grantRole(DEFAULT_ADMIN_ROLE, _initialOwner);
         _grantRole(MINTER_ROLE, _initialOwner);
         _transferOwnership(_initialOwner);
-
-        // setBaseURI(_initBaseURI);
-        _postRevealBaseURI = _initBaseURI;
-        // setPreRevealedURI(_initNotRevealUri);
-        _preRevealURI = _initNotRevealUri;
+        // _reveal(_initReveal, _initBaseURI);
+        _URI = _initBaseURI;
+        _isRevealed = _initReveal;
+        if (_initReveal) {
+            emit Revealed(_URI);
+        }
     }
 
     event Revealed(string baseURI);
@@ -59,21 +47,15 @@ contract NftContract is
     );
 
     function setBaseURI(
-        string calldata _newBaseURI
+        string calldata newBaseURI
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _postRevealBaseURI = _newBaseURI;
+        _URI = newBaseURI;
     }
 
     function setBaseExtension(
         string calldata _newBaseExtension
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         baseExtension = _newBaseExtension;
-    }
-
-    function setPreRevealedURI(
-        string calldata _notRevealedURI
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _preRevealURI = _notRevealedURI;
     }
 
     function safeMint(
@@ -84,18 +66,17 @@ contract NftContract is
     }
 
     function tokenURI(
-        uint256 _tokenId
+        uint256 tokenId
     ) public view override returns (string memory) {
-        require(_ownerOf(_tokenId) != address(0), "nonexistent token");
+        require(_ownerOf(tokenId) != address(0), "nonexistent token");
 
         // return super.tokenURI(_tokenId);
-        string memory currentBaseURI = _isRevealed ? _baseURI() : _preRevealURI;
         return
-            bytes(currentBaseURI).length > 0
+            bytes(_baseURI()).length > 0
                 ? string(
                     abi.encodePacked(
-                        currentBaseURI,
-                        Strings.toString(_tokenId),
+                        _baseURI(),
+                        Strings.toString(tokenId),
                         baseExtension
                     )
                 )
@@ -103,13 +84,12 @@ contract NftContract is
     }
 
     function reveal(
-        string memory _newBaseURI
+        string calldata newBaseURI
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_isRevealed == false, "already revealed!");
-        _postRevealBaseURI = _newBaseURI;
+        _URI = newBaseURI;
         _isRevealed = true;
-
-        emit Revealed(_newBaseURI);
+        emit Revealed(_URI);
     }
 
     function revealed() public view returns (bool) {
@@ -117,64 +97,7 @@ contract NftContract is
     }
 
     function _baseURI() internal view override returns (string memory) {
-        return _postRevealBaseURI;
-    }
-
-    function setProxyRegistryAddress(
-        address _proxyRegistryAddress
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        proxyRegistryAddress = _proxyRegistryAddress;
-    }
-
-    function setAllowExternalTrade(
-        bool _allow
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        // require(_allowExternalTrade != _allow, "same value");
-        _allowExternalTrade = _allow;
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual override(ERC721, IERC721) {
-        require(
-            _allowExternalTrade == true ||
-                isApprovedForAll(from, msg.sender) == true,
-            "not allowed"
-        );
-        super.transferFrom(from, to, tokenId);
-    }
-
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public virtual override(ERC721, IERC721) {
-        require(
-            _allowExternalTrade == true ||
-                isApprovedForAll(from, msg.sender) == true,
-            "not allowed"
-        );
-        super.safeTransferFrom(from, to, tokenId, data);
-    }
-
-    function isApprovedForAll(
-        address __owner,
-        address operator
-    ) public view override(ERC721, IERC721) returns (bool) {
-        if (_allowExternalTrade == true) {
-            return super.isApprovedForAll(__owner, operator);
-        }
-
-        // Whitelist WEnFT proxy contract for easy trading.
-        ProxyRegistry proxyRegistry = ProxyRegistry(proxyRegistryAddress);
-        require(
-            address(proxyRegistry.proxies(__owner)) == operator,
-            "only proxied account allowed"
-        );
-        return true;
+        return _URI;
     }
 
     /**

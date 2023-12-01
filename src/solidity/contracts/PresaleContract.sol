@@ -28,6 +28,7 @@ contract PresaleContract is Pausable, Ownable {
         uint256 mintedCount;
         uint256 minTokenId;
         uint256 maxTokenId;
+        bytes32 merkleRoot;
     }
 
     mapping(uint256 => TokenConfig) public tokenConfigs; // 토큰 타입별 정보 매핑
@@ -58,7 +59,8 @@ contract PresaleContract is Pausable, Ownable {
         uint256 _price,
         uint256 _maxSupply,
         uint256 _minTokenId,
-        uint256 _maxTokenId
+        uint256 _maxTokenId,
+        bytes32 _merkleRoot
     ) external onlyOwner {
         require(_price > 0, "Price must be greater than zero");
         require(_maxSupply > 0, "Max supply must be greater than zero");
@@ -69,7 +71,8 @@ contract PresaleContract is Pausable, Ownable {
             _maxSupply,
             0,
             _minTokenId,
-            _maxTokenId
+            _maxTokenId,
+            _merkleRoot
         );
     }
 

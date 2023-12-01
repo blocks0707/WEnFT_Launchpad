@@ -14,7 +14,7 @@ contract NftContractFactory {
         string memory _name,
         string memory _symbol,
         string memory _initBaseURI,
-        string memory _initNotRevealUri,
+        bool _initReveal,
         address _initialOwner
     ) public returns (address) {
         require(_initialOwner != address(0), "invalid initial owner");
@@ -24,7 +24,7 @@ contract NftContractFactory {
             _name,
             _symbol,
             _initBaseURI,
-            _initNotRevealUri
+            _initReveal
         );
 
         NftContracts[address(nft)] = [_name, _symbol];
