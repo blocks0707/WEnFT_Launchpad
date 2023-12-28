@@ -9,8 +9,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {NftContract} from "./NftContract.sol";
 
 contract MintContract is Pausable, Ownable {
-    uint256 private _mintStartBlock;
-    uint256 private _mintEndBlock;
+    uint256 public perRequest = 1;
+    mapping(uint256 => mapping(address => uint256)) public addressMintedBalance;
 
     uint256 public minHoldMembership;
 
@@ -25,6 +25,9 @@ contract MintContract is Pausable, Ownable {
         uint256 mintedCount;
         uint256 minTokenId;
         uint256 maxTokenId;
+        uint256 mintStartBlock;
+        uint256 mintEndBlock;
+        uint256 perAddress;
     }
 
     mapping(uint256 => TokenConfig) public tokenConfigs; // 토큰 타입별 정보 매핑
@@ -55,7 +58,10 @@ contract MintContract is Pausable, Ownable {
         uint256 _price,
         uint256 _maxSupply,
         uint256 _minTokenId,
-        uint256 _maxTokenId
+        uint256 _maxTokenId,
+        uint256 _mintStartBlock,
+        uint256 _mintEndBlock,
+        uint256 _perAddress
     ) external onlyOwner {
         require(_price > 0, "Price must be greater than zero");
         require(_maxSupply > 0, "Max supply must be greater than zero");
@@ -66,7 +72,10 @@ contract MintContract is Pausable, Ownable {
             _maxSupply,
             0,
             _minTokenId,
-            _maxTokenId
+            _maxTokenId,
+            _mintStartBlock,
+            _mintEndBlock,
+            _perAddress
         );
     }
 
@@ -105,7 +114,7 @@ contract MintContract is Pausable, Ownable {
         return tokenConfig.mintedCount;
     }
 
-    event MintRoundBlockChanged(uint256 startBlockTime, uint256 endBlockTime);
+    // event MintRoundBlockChanged(uint256 startBlockTime, uint256 endBlockTime);
     event Withdraw(uint256 amount);
     event NFTMinted(address minter, uint256 nftId);
 
@@ -126,18 +135,24 @@ contract MintContract is Pausable, Ownable {
         TokenConfig storage tokenConfig = tokenConfigs[_tokenType];
 
         require(tokenConfig.price > 0, "Invalid token price");
+        require(_quantity <= perRequest, "Invalid quantity");
         require(
             msg.sender == owner() || msg.value == tokenConfig.price * _quantity,
             "Incorrect amount sent"
         );
         require(
-            block.timestamp >= _mintStartBlock &&
-                block.timestamp <= _mintEndBlock,
+            block.timestamp >= tokenConfig.mintStartBlock &&
+                block.timestamp <= tokenConfig.mintEndBlock,
             "Not available now"
         );
         require(
             tokenConfig.mintedCount + _quantity <= tokenConfig.maxSupply,
             "Token supply exceeded"
+        );
+        require(
+            addressMintedBalance[_tokenType][msg.sender] + _quantity <=
+                tokenConfig.perAddress,
+            "Per address exceeded"
         );
         require(
             minHoldMembership == 0 ||
@@ -152,6 +167,7 @@ contract MintContract is Pausable, Ownable {
             emit NFTMinted(to, nftId);
         }
         tokenConfig.mintedCount += _quantity;
+        addressMintedBalance[_tokenType][msg.sender] += _quantity;
     }
 
     // 다음 토큰 ID 가져오기
@@ -171,15 +187,25 @@ contract MintContract is Pausable, Ownable {
 
     function setMintRoundBlock(
         uint256 startBlock,
-        uint256 endBlock
+        uint256 endBlock,
+        uint256 tokenType
     ) public onlyOwner {
-        _mintStartBlock = startBlock;
-        _mintEndBlock = endBlock;
-        emit MintRoundBlockChanged(_mintStartBlock, _mintEndBlock);
+        TokenConfig storage tokenConfig = tokenConfigs[tokenType];
+
+        tokenConfig.mintStartBlock = startBlock;
+        tokenConfig.mintEndBlock = endBlock;
+        // emit MintRoundBlockChanged(_mintStartBlock, _mintEndBlock);
     }
 
-    function mintRoundBlock() public view returns (uint256, uint256) {
-        return (_mintStartBlock, _mintEndBlock);
+    function mintRoundBlock(
+        uint256 tokenType
+    ) public view returns (uint256, uint256) {
+        TokenConfig storage tokenConfig = tokenConfigs[tokenType];
+        return (tokenConfig.mintStartBlock, tokenConfig.mintEndBlock);
+    }
+
+    function setPerRequest(uint256 amount) public onlyOwner {
+        perRequest = amount;
     }
 
     function withdraw() public payable onlyOwner {

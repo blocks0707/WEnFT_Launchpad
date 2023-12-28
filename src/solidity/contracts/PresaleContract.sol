@@ -4,16 +4,14 @@ pragma solidity ^0.8.20;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 import {NftContract} from "./NftContract.sol";
 
 contract PresaleContract is Pausable, Ownable {
-    bytes32 public merkleRoot;
-
-    uint256 private _mintStartBlock;
-    uint256 private _mintEndBlock;
+    uint256 public perRequest = 1;
+    mapping(uint256 => mapping(address => uint256)) public addressMintedBalance;
 
     uint256 public minHoldMembership;
 
@@ -28,6 +26,9 @@ contract PresaleContract is Pausable, Ownable {
         uint256 mintedCount;
         uint256 minTokenId;
         uint256 maxTokenId;
+        uint256 mintStartBlock;
+        uint256 mintEndBlock;
+        uint256 perAddress;
         bytes32 merkleRoot;
     }
 
@@ -60,6 +61,9 @@ contract PresaleContract is Pausable, Ownable {
         uint256 _maxSupply,
         uint256 _minTokenId,
         uint256 _maxTokenId,
+        uint256 _mintStartBlock,
+        uint256 _mintEndBlock,
+        uint256 _perAddress,
         bytes32 _merkleRoot
     ) external onlyOwner {
         require(_price > 0, "Price must be greater than zero");
@@ -72,6 +76,9 @@ contract PresaleContract is Pausable, Ownable {
             0,
             _minTokenId,
             _maxTokenId,
+            _mintStartBlock,
+            _mintEndBlock,
+            _perAddress,
             _merkleRoot
         );
     }
@@ -111,7 +118,7 @@ contract PresaleContract is Pausable, Ownable {
         return tokenConfig.mintedCount;
     }
 
-    event MintRoundBlockChanged(uint256 startBlockTime, uint256 endBlockTime);
+    // event MintRoundBlockChanged(uint256 startBlockTime, uint256 endBlockTime);
     event Withdraw(uint256 amount);
     event NFTMinted(address minter, uint256 nftId);
 
@@ -130,27 +137,37 @@ contract PresaleContract is Pausable, Ownable {
         uint256 _quantity,
         bytes32[] calldata _merkleProof
     ) external payable whenNotPaused {
+        TokenConfig storage tokenConfig = tokenConfigs[_tokenType];
+
         bytes32 node = keccak256(abi.encodePacked(to));
         require(
-            MerkleProof.verifyCalldata(_merkleProof, merkleRoot, node) == true,
+            MerkleProof.verifyCalldata(
+                _merkleProof,
+                tokenConfig.merkleRoot,
+                node
+            ) == true,
             "user is not whitelisted"
         );
 
-        TokenConfig storage tokenConfig = tokenConfigs[_tokenType];
-
         require(tokenConfig.price > 0, "Invalid token price");
+        require(_quantity <= perRequest, "Invalid quantity");
         require(
             msg.sender == owner() || msg.value == tokenConfig.price * _quantity,
             "Incorrect amount sent"
         );
         require(
-            block.timestamp >= _mintStartBlock &&
-                block.timestamp <= _mintEndBlock,
+            block.timestamp >= tokenConfig.mintStartBlock &&
+                block.timestamp <= tokenConfig.mintEndBlock,
             "Not available now"
         );
         require(
             tokenConfig.mintedCount + _quantity <= tokenConfig.maxSupply,
             "Token supply exceeded"
+        );
+        require(
+            addressMintedBalance[_tokenType][msg.sender] + _quantity <=
+                tokenConfig.perAddress,
+            "Per address exceeded"
         );
         require(
             minHoldMembership == 0 ||
@@ -165,6 +182,7 @@ contract PresaleContract is Pausable, Ownable {
             emit NFTMinted(to, nftId);
         }
         tokenConfig.mintedCount += _quantity;
+        addressMintedBalance[_tokenType][msg.sender] += _quantity;
     }
 
     // 다음 토큰 ID 가져오기
@@ -184,15 +202,25 @@ contract PresaleContract is Pausable, Ownable {
 
     function setMintRoundBlock(
         uint256 startBlock,
-        uint256 endBlock
+        uint256 endBlock,
+        uint256 tokenType
     ) public onlyOwner {
-        _mintStartBlock = startBlock;
-        _mintEndBlock = endBlock;
-        emit MintRoundBlockChanged(_mintStartBlock, _mintEndBlock);
+        TokenConfig storage tokenConfig = tokenConfigs[tokenType];
+
+        tokenConfig.mintStartBlock = startBlock;
+        tokenConfig.mintEndBlock = endBlock;
+        // emit MintRoundBlockChanged(_mintStartBlock, _mintEndBlock);
     }
 
-    function mintRoundBlock() public view returns (uint256, uint256) {
-        return (_mintStartBlock, _mintEndBlock);
+    function mintRoundBlock(
+        uint256 tokenType
+    ) public view returns (uint256, uint256) {
+        TokenConfig storage tokenConfig = tokenConfigs[tokenType];
+        return (tokenConfig.mintStartBlock, tokenConfig.mintEndBlock);
+    }
+
+    function setPerRequest(uint256 amount) public onlyOwner {
+        perRequest = amount;
     }
 
     function withdraw() public payable onlyOwner {
