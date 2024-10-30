@@ -1,0 +1,29 @@
+{
+  "canisters": {
+    "wenft_launchpad_backend": {
+      "main": "src/wenft_launchpad_backend/main.mo",
+      "type": "motoko"
+    },
+    "wenft_launchpad_frontend": {
+      "dependencies": [
+        "wenft_launchpad_backend"
+      ],
+      "frontend": {
+        "entrypoint": "src/wenft_launchpad_frontend/src/index.html"
+      },
+      "source": [
+        "src/wenft_launchpad_frontend/assets",
+        "dist/wenft_launchpad_frontend/"
+      ],
+      "type": "assets"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
